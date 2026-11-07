@@ -363,3 +363,6 @@ html.calme *, html.calme *::before, html.calme *::after { animation-duration: .0
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; }
 }
+.prime { padding: 6px 0 10px; }
+.prime + .prime, .prime + .ligne-btn, .ligne-btn + .prime { border-top: 1px solid var(--ligne, rgba(127,127,127,.25)); }
+.prime p { margin: 0 0 8px; }

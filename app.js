@@ -441,7 +441,7 @@ const PETITE_LEGENDE = () => el("div", { class: "legende" }, el("span", {}, el("
 async function pageAccueil() {
   const a = await q("accueil");
   if (!a.carte) return accueilVide();
-  const rappels = a.rappels.slice(0, 6).map((r) => el("button", { type: "button", class: "ligne-btn rappel", onclick: () => aller(r.page) }, el("span", { class: `point ${r.gravite}` }), el("span", { class: "milieu" }, r.texte), el("span", { class: "suite" }, "›")));
+  const rappels = a.rappels.slice(0, 6).map((r) => el("button", { type: "button", class: "ligne-btn rappel", onclick: () => { if (r.mois) M = { a: r.mois[0], m: r.mois[1] }; aller(r.page); } }, el("span", { class: `point ${r.gravite}` }), el("span", { class: "milieu" }, r.texte), el("span", { class: "suite" }, "›")));
   const copie = rappelCopie();
   return [
     entete(`Bonjour, ${a.prenom || "chauffeur"}`, a.lu ? `Dernière lecture de la carte : le ${a.lu}` : ""),
@@ -789,6 +789,7 @@ async function pagePaie() {
       tuile("Cotisations + mutuelle", chiffre(r.cotisations_total + r.mutuelle, euros)),
       tuile("Paniers", chiffre(r.paniers_total, euros), accorder(paniers.filter((p) => p.montant).length, "jour avec panier", "jours avec panier")),
       tuile("Net simulé", chiffre(r.net, euros), r.impot ? `après impôt : ${euros(r.net_apres_impot)}` : "avant impôt à la source", "vif")),
+    r.primes.length ? cartePrimes(r.primes) : null,
     r.notes.length ? el("div", { class: "message orange" }, r.notes.map((n) => el("div", {}, n))) : null,
     el("section", { class: "carte" }, el("h2", {}, "Le calcul, ligne par ligne"), el("div", { class: "bulletin" },
       r.lignes.map((l) => ligneBulletin(`${l.libelle}${l.quantite ? ` (${l.quantite}${l.taux ? ` · ${l.taux}` : ""})` : ""}`, euros(l.montant), l.trace)),
@@ -807,6 +808,51 @@ async function pagePaie() {
       el("span", { class: "droite" }, p.montant ? euros(p.montant) : "—"), el("span", { class: "suite" }, "›"))) : el("p", { class: "doux" }, "Aucun jour travaillé ce mois-ci.")),
     el("div", { class: "boutons" }, el("button", { class: "btn fort", type: "button", onclick: ouvrirDocuments }, "Documents du mois")),
   ];
+}
+
+// ---- primes : sur la paye du mois prévu, l'appli demande si la prime est venue avant de la compter
+function cartePrimes(primes) {
+  const repondre = async (x, reponse, montant) => {
+    const r = await q("poser_prime", [M.a, M.m, x.cle, reponse, montant ?? null]);
+    if (!r.ok) return toast(r.message, { erreur: true });
+    fermerFeuille();
+    toast(reponse === "effacer" ? "Réponse effacée : la question reviendra." : reponse === "oui" ? `${x.libelle} comptée.` : `${x.libelle} notée comme pas versée.`);
+    return rafraichir();
+  };
+  const autre = (x) => {
+    vibrer();
+    const champ = el("input", { type: "text", inputmode: "decimal", "aria-label": "Montant reçu", placeholder: "Montant brut, par exemple 150", value: x.etat === "recue" ? String(x.montant).replace(".", ",") : "" });
+    ouvrirFeuille([
+      el("h2", {}, `${x.libelle} : autre montant`),
+      el("p", { class: "doux petit" }, `Prévu : ${euros(x.prevu)} brut. Écris le montant brut lu sur le bulletin (une retenue a pu le baisser).`),
+      el("div", { class: "pile-champ" }, champ),
+      el("div", { class: "boutons" }, el("button", { class: "btn fort", type: "button", onclick: () => repondre(x, "oui", champ.value) }, "Enregistrer")),
+    ]);
+  };
+  const ligne = (x) => {
+    if (x.etat === "attente") {
+      return el("div", { class: "prime" },
+        el("p", {}, el("strong", {}, `${x.libelle} : reçue sur cette paye ?`), el("div", { class: "doux petit" }, "Pas comptée tant que tu n'as pas répondu.")),
+        el("div", { class: "boutons" },
+          el("button", { class: "btn fort", type: "button", onclick: () => repondre(x, "oui") }, `Oui, ${euros(x.prevu)}`),
+          el("button", { class: "btn", type: "button", onclick: () => autre(x) }, "Autre montant"),
+          el("button", { class: "btn", type: "button", onclick: () => repondre(x, "non") }, "Non")));
+    }
+    const etat = x.etat === "recue" ? `reçue, ${euros(x.montant)}` : "pas versée";
+    return el("button", { type: "button", class: "ligne-btn", onclick: () => {
+      vibrer();
+      ouvrirFeuille([
+        el("h2", {}, x.libelle),
+        el("p", { class: "doux" }, `Ta réponse : ${etat}.`),
+        el("div", { class: "boutons" },
+          el("button", { class: "btn", type: "button", onclick: () => repondre(x, "oui") }, `Reçue, ${euros(x.prevu)}`),
+          el("button", { class: "btn", type: "button", onclick: () => autre(x) }, "Autre montant"),
+          el("button", { class: "btn", type: "button", onclick: () => repondre(x, "non") }, "Pas versée"),
+          el("button", { class: "btn danger", type: "button", onclick: () => repondre(x, "effacer") }, "Effacer la réponse")),
+      ]);
+    } }, el("span", { class: "milieu" }, el("strong", {}, x.libelle), el("div", { class: "doux petit" }, etat)), el("span", { class: "suite" }, "Changer ›"));
+  };
+  return el("section", { class: "carte" }, el("h2", {}, "Primes de ce mois"), primes.map(ligne));
 }
 
 function ouvrirPanier(p, types) {
