@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr" data-theme="clair">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TachoReader</title>
+<meta name="description" content="Tes heures, tes infractions et ta paie indicative, à partir du fichier de ta carte conducteur.">
+<meta name="theme-color" content="#F5F1E8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TachoReader">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icone-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="demarrage">
+  <img src="icone-192.png" alt="" width="96" height="96">
+  <h1>TachoReader</h1>
+  <div class="barre-demarrage"><div id="demarrage-part"></div></div>
+  <p id="demarrage-texte">Ouverture…</p>
+  <p id="demarrage-note" class="note-demarrage"></p>
+</div>
+
+<div id="app" hidden>
+  <nav id="nav" aria-label="Pages"></nav>
+  <div id="colonne">
+    <div id="bandeau-demo" hidden>
+      <span>Démo : rien n'est gardé.</span>
+      <button id="sortir-demo" type="button">Sortir de la démo</button>
+    </div>
+    <main id="page" tabindex="-1"></main>
+  </div>
+</div>
+
+<div id="voile" hidden></div>
+<section id="feuille" role="dialog" aria-modal="true" hidden>
+  <div id="poignee" aria-hidden="true"></div>
+  <button id="fermer-feuille" type="button" aria-label="Fermer">×</button>
+  <div id="feuille-corps"></div>
+</section>
+<div id="toasts" aria-live="polite"></div>
+<div id="depot" hidden>Lâche le fichier ici</div>
+<input id="choix-fichier" type="file" multiple hidden>
+<noscript>TachoReader a besoin de JavaScript pour fonctionner.</noscript>
+<script src="app.js"></script>
+</body>
+</html>
