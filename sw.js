@@ -1,6 +1,6 @@
 // Service worker : garde tout le programme sur l'appareil pour qu'il marche sans réseau. Modèle : construire.py remplit la version et la liste.
-const VERSION = "96b1b1834b27";
-const FICHIERS = {"app.js": 62528, "icone-192.png": 2387, "icone-512.png": 7095, "icone.svg": 407, "index.html": 1950, "manifest.webmanifest": 603, "moteur.zip": 67421, "polices/Manrope.woff2": 24376, "polices/OFL.txt": 4383, "pyodide/pyodide-lock.json": 112205, "pyodide/pyodide.asm.js": 1255688, "pyodide/pyodide.asm.wasm": 10105545, "pyodide/pyodide.js": 14913, "pyodide/python_stdlib.zip": 2360737, "pyodide/sqlite3-1.0.0-cp312-cp312-pyodide_2024_0_wasm32.whl": 563076, "style.css": 29751, "travailleur.js": 4483};
+const VERSION = "6fff9c70bcb8";
+const FICHIERS = {"app.js": 68522, "icone-192.png": 2387, "icone-512.png": 7095, "icone.svg": 407, "index.html": 1950, "manifest.webmanifest": 603, "moteur.zip": 70361, "polices/Manrope.woff2": 24376, "polices/OFL.txt": 4383, "pyodide/pyodide-lock.json": 112205, "pyodide/pyodide.asm.js": 1255688, "pyodide/pyodide.asm.wasm": 10105545, "pyodide/pyodide.js": 14913, "pyodide/python_stdlib.zip": 2360737, "pyodide/sqlite3-1.0.0-cp312-cp312-pyodide_2024_0_wasm32.whl": 563076, "style.css": 30378, "travailleur.js": 4483};
 const CACHE = `tachoreader-${VERSION}`;
 
 async function prevenir(message) {

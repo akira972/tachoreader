@@ -490,6 +490,8 @@ function accueilVide() {
 
 // ------------------------------------------------------------ mois
 const MARQUE_VIDE = "";
+let choix = null; // jours choisis (ISO) pour poser une absence sur plusieurs jours ; null hors de ce mode
+let typesAbsence = [];
 
 function caseJour(c, i, aujourdhui) {
   const couleur = c.statut === "avant" ? "avant" : c.couleur;
@@ -499,15 +501,97 @@ function caseJour(c, i, aujourdhui) {
   if (c.statut === "absence") temps = c.ferie ? "férié" : "absent";
   else if (total) temps = duree(total);
   else if (c.ferie) temps = "férié";
-  return el("button", {
+  else if (c.statut === "repos") temps = "repos";
+  const bouton = el("button", {
     type: "button",
-    class: `jour-case ${couleur}${c.iso === aujourdhui ? " aujourdhui" : ""}${animationsActives() ? " entre" : ""}`,
+    class: `jour-case ${couleur}${c.iso === aujourdhui ? " aujourdhui" : ""}${animationsActives() ? " entre" : ""}${choix && choix.has(c.iso) ? " choisi" : ""}`,
     style: `--i:${i}`,
+    "data-iso": c.iso,
     "aria-label": `${c.court} : ${c.etat}${total ? `, ${duree(total)}` : ""}`,
-    onclick: () => ouvrirJour(c.iso),
+    "aria-pressed": choix ? String(choix.has(c.iso)) : null,
+    onclick: () => {
+      if (!choix) return ouvrirJour(c.iso);
+      vibrer();
+      if (choix.has(c.iso)) choix.delete(c.iso); else choix.add(c.iso);
+      bouton.classList.toggle("choisi", choix.has(c.iso));
+      bouton.setAttribute("aria-pressed", String(choix.has(c.iso)));
+      majBarreChoix();
+    },
   }, el("span", { class: `num${c.ferie || c.dimanche ? " rouge" : ""}` }, c.num, el("span", { class: "marques" }, marques)),
   el("span", { class: "temps" }, temps),
   total ? el("span", { class: "mini", style: `width:${Math.min(100, (total / 840) * 100)}%` }) : null);
+  return bouton;
+}
+
+// ---- plusieurs jours d'un coup : on touche les jours (sur un ou plusieurs mois), puis « Poser une absence »
+const isoVersDate = (iso) => new Date(`${iso}T12:00:00`);
+const dateVersIso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const courtIso = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+function texteChoix() {
+  if (!choix.size) return "Touche les jours voulus (tu peux changer de mois).";
+  const tries = [...choix].sort();
+  const bornes = choix.size > 1 ? ` · du ${courtIso(tries[0])} au ${courtIso(tries[tries.length - 1])}` : ` · ${courtIso(tries[0])}`;
+  return `${accorder(choix.size, "jour choisi", "jours choisis")}${bornes}`;
+}
+
+function majBarreChoix() {
+  const barre = document.getElementById("barre-choix");
+  if (!barre) return;
+  barre.querySelector(".texte-choix").textContent = texteChoix();
+  barre.querySelector(".remplir").disabled = choix.size < 2;
+  barre.querySelector(".poser").disabled = !choix.size;
+}
+
+function remplirEntre() {
+  vibrer();
+  const tries = [...choix].sort();
+  for (let d = isoVersDate(tries[0]); dateVersIso(d) <= tries[tries.length - 1]; d.setDate(d.getDate() + 1)) choix.add(dateVersIso(d));
+  document.querySelectorAll(".jour-case[data-iso]").forEach((b) => {
+    const oui = choix.has(b.dataset.iso);
+    b.classList.toggle("choisi", oui);
+    b.setAttribute("aria-pressed", String(oui));
+  });
+  majBarreChoix();
+}
+
+function barreChoix() {
+  if (!choix) {
+    return el("div", { class: "boutons barre-choix" },
+      el("button", { class: "btn", type: "button", onclick: () => { vibrer(); choix = new Set(); afficher(null); } }, "Choisir plusieurs jours"));
+  }
+  return el("div", { id: "barre-choix", class: "barre-choix active" },
+    el("p", { class: "texte-choix petit" }, texteChoix()),
+    el("div", { class: "boutons" },
+      el("button", { class: "btn remplir", type: "button", disabled: choix.size < 2, onclick: remplirEntre }, "Remplir entre"),
+      el("button", { class: "btn fort poser", type: "button", disabled: !choix.size, onclick: ouvrirPeriode }, "Poser une absence…"),
+      el("button", { class: "btn", type: "button", onclick: () => { choix = null; afficher(null); } }, "Annuler")));
+}
+
+function ouvrirPeriode() {
+  vibrer();
+  const isos = [...choix].sort();
+  const type = el("select", { "aria-label": "Type d'absence" }, typesAbsence.map(([c, n]) => el("option", { value: c }, n)));
+  const com = el("input", { type: "text", "aria-label": "Commentaire de l'absence", placeholder: "Commentaire (facultatif)" });
+  const sauter = el("input", { type: "checkbox", checked: true, "aria-label": "Sauter les jours de repos et les fériés" });
+  const finir = async (genre) => {
+    const r = await q("poser_absences", [isos, genre, com.value, sauter.checked]);
+    const fait = `Absence ${genre ? "posée" : "retirée"} sur ${accorder(r.faits, "jour", "jours")}`;
+    toast(r.sautes ? `${fait} (${accorder(r.sautes, "jour sauté", "jours sautés")} : repos, férié ou jour travaillé).` : `${fait}.`);
+    choix = null;
+    fermerFeuille();
+    await rafraichir();
+  };
+  ouvrirFeuille([
+    el("h2", {}, "Absence sur plusieurs jours"),
+    el("p", { class: "doux" }, texteChoix()),
+    el("div", { class: "pile-champ" }, type, com),
+    el("div", { class: "champ" }, el("label", {}, "Sauter les jours de repos et les fériés"), el("span", { class: "interrupteur" }, sauter, el("i"))),
+    el("p", { class: "doux petit" }, "Les jours où la carte montre du travail ne sont jamais touchés."),
+    el("div", { class: "boutons" },
+      el("button", { class: "btn fort", type: "button", onclick: () => finir(type.value) }, "Poser l'absence"),
+      el("button", { class: "btn danger", type: "button", onclick: () => confirmer("Retirer les absences ?", `Les absences des ${accorder(isos.length, "jour choisi", "jours choisis")} seront retirées.`, () => finir(null)) }, "Retirer les absences")),
+  ]);
 }
 
 function resumeMois(d) {
@@ -532,6 +616,7 @@ function ecart(actuel, avant) {
 async function pageMois() {
   if (!M) return sansCarte("Mois");
   const d = await q("mois", [M.a, M.m]);
+  typesAbsence = d.types_absence;
   const t = d.totaux;
   const p = d.precedent;
   const vides = Array.from({ length: d.decalage }, () => el("div", { class: "vide-case" }));
@@ -547,7 +632,8 @@ async function pageMois() {
     el("section", { class: "carte" },
       el("div", { class: "semaine-noms" }, ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."].map((j) => el("div", {}, j))),
       el("div", { class: "calendrier" }, vides, d.jours.map((c, i) => caseJour(c, i, d.aujourdhui))),
-      el("div", { class: "legende" }, [["vert", "Complet"], ["jaune", "Incomplet"], ["orange", "Manquant"], ["gris", "Absence"]].map(([c, n]) => el("span", {}, el("i", { style: `background:var(--${c})` }), n)))),
+      el("div", { class: "legende" }, [["vert", "Complet"], ["jaune", "Incomplet"], ["orange", "Manquant"], ["gris", "Absence"], ["repos", "Repos"]].map(([c, n]) => el("span", {}, el("i", c === "repos" ? { class: "pastille-repos" } : { style: `background:var(--${c})` }), n))),
+      barreChoix()),
     el("section", { class: "carte" }, el("h2", {}, "En résumé"), resumeMois(d).map((l) => el("p", { class: "petit" }, l))),
     el("section", { class: "carte" }, el("h2", {}, "Jour par jour"),
       barres(d.jours.map((c) => ({ nom: String(c.num), iso: c.iso, conduite: c.conduite, travail: c.travail, dispo: c.dispo })), true), PETITE_LEGENDE()),
@@ -577,6 +663,7 @@ const FILTRES_JOURS = [
   ["sans", "Sans données", (j) => j.statut === "sans"],
   ["incomplets", "Incomplets", (j) => j.statut === "donnees" && j.etat === "incomplet"],
   ["absences", "Absences", (j) => j.statut === "absence"],
+  ["repos", "Repos et fériés", (j) => j.statut === "repos"],
   ["dimanches", "Dimanches et fériés", (j) => j.dimanche || j.ferie],
   ["infraction", "Avec infraction", (j) => j.nb_infractions > 0],
 ];

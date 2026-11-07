@@ -267,6 +267,12 @@ html[data-theme="clair"] .message.jaune { color: #6b5000; }
 .jour-case.orange { background: var(--orange); border-color: transparent; }
 .jour-case.gris { background: var(--gris); border-color: transparent; }
 .jour-case.avant { background: transparent; color: var(--doux); }
+.jour-case.repos { background: transparent; border: 1.5px dashed var(--bord-fort); color: var(--doux); }
+.jour-case.choisi { outline: 3px solid var(--accent); outline-offset: -3px; }
+.legende i.pastille-repos { background: transparent; border: 1px dashed var(--doux); box-sizing: border-box; }
+.barre-choix { margin-top: 12px; }
+.barre-choix.active { padding: 10px 12px; border-radius: 16px; background: var(--carte); border: 1px solid var(--bord-fort); box-shadow: var(--ombre); position: sticky; bottom: calc(env(safe-area-inset-bottom) + 96px); z-index: 2; }
+.barre-choix .texte-choix { margin: 0 0 8px; font-weight: 650; }
 .jour-case.aujourdhui { border: 2px solid var(--accent); }
 .jour-case .num { font-size: .8rem; font-weight: 750; display: flex; justify-content: space-between; gap: 2px; }
 .jour-case .num.rouge { color: var(--rouge-fort); }
